@@ -1,0 +1,15 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "plugins": [
+    {
+      "package": "phrasepatch",
+      "options": {
+        "enabled": true,
+        "targetLanguage": "English",
+        "nativeLanguage": "Portuguese",
+        "mode": "light",
+        "maxTips": 2
+      }
+    }
+  ]
+}

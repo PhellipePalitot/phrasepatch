@@ -1,0 +1,38 @@
+{
+  "name": "phrasepatch",
+  "version": "0.1.0",
+  "description": "Learn any language organically while prompting AI coding agents.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "files": [
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "check": "npm run typecheck && npm test"
+  },
+  "keywords": [
+    "opencode",
+    "language-learning",
+    "ai-agents",
+    "developer-tools",
+    "language-coach",
+    "plugin"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@opencode/plugin": "latest"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
+  }
+}
