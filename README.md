@@ -17,14 +17,27 @@ create a endpoint for get all users with pagination
 PhrasePatch asks the same model to begin with a tiny language review:
 
 ```text
-PhrasePatch · 7/10
+> PhrasePatch · 7/10
+> 
+> More natural:
+> Create an endpoint to retrieve all users with pagination.
+> 
+> Learn:
+> - Use "an endpoint", not "a endpoint".
+> - "to retrieve" is more natural than "for get".
 
-More natural:
-Create an endpoint to retrieve all users with pagination.
+[normal agent response continues here...]
+```
 
-Learn:
-- Use "an endpoint", not "a endpoint".
-- "to retrieve" is more natural than "for get".
+Or when prompting in your native language:
+
+```text
+crie um endpoint para listar todos os usuários com paginação
+```
+
+```text
+> PhrasePatch · In English:
+> "Create an endpoint to retrieve all users with pagination."
 
 [normal agent response continues here...]
 ```
@@ -47,6 +60,7 @@ Current scope:
 - configurable target language
 - configurable explanation/native language
 - light, normal, and study modes
+- target language suggestions from native prompts (`suggestFromNative`)
 - no second LLM call
 - no prompt rewriting
 
@@ -109,12 +123,22 @@ OpenCode V2 supports local paths, Git repositories, and npm packages as plugin s
         "targetLanguage": "English",
         "nativeLanguage": "Portuguese",
         "mode": "light",
-        "maxTips": 2
+        "maxTips": 2,
+        "suggestFromNative": true
       }
     }
   ]
 }
 ```
+
+### Options
+
+- `enabled` (`boolean`, default: `true`): Enable or disable PhrasePatch.
+- `targetLanguage` (`string`, default: `"English"`): Language you want to practice.
+- `nativeLanguage` (`string`, default: `"Portuguese"`): Language used for feedback and tips.
+- `mode` (`"light"` | `"normal"` | `"study"`, default: `"light"`): Coaching depth.
+- `maxTips` (`number`, 1–5, default: `2`): Maximum number of actionable tips per response.
+- `suggestFromNative` (`boolean`, default: `true`): When you write prompts in your native language, provides a compact note on how to phrase it in your target language.
 
 ### Modes
 
