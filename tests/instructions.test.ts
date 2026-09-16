@@ -32,3 +32,24 @@ describe("buildCoachInstruction", () => {
     expect(prompt).toContain("Ignore text written mainly in another language.");
   });
 });
+
+describe("buildReviewerSystemPrompt", () => {
+  test("generates out-of-band reviewer prompt with language targets", async () => {
+    const { buildReviewerSystemPrompt } = await import("../src/instructions");
+    const prompt = buildReviewerSystemPrompt({
+      enabled: true,
+      targetLanguage: "English",
+      nativeLanguage: "Portuguese",
+      mode: "light",
+      maxTips: 2,
+      suggestFromNative: true,
+    });
+
+    expect(prompt).toContain("Target language: English");
+    expect(prompt).toContain("Explanation language: Portuguese");
+    expect(prompt).toContain("PhrasePatch (score/10)");
+    expect(prompt).toContain("Output ONLY: OMIT");
+    expect(prompt).toContain("DO NOT answer the user's technical question");
+  });
+});
+

@@ -128,14 +128,40 @@ function removeMarkdownBlock(filePath) {
   return true;
 }
 
+function buildReviewerPrompt(options) {
+  const nativeHandling = options.suggestFromNative
+    ? `- If written primarily in ${options.nativeLanguage}:
+  Prepend a brief 1-2 line blockquote showing how to phrase that prompt naturally in ${options.targetLanguage}:
+  > **PhrasePatch · In ${options.targetLanguage}:** "<natural ${options.targetLanguage} phrasing>"`
+    : `- If written in another language: Output ONLY: OMIT`;
+
+  return `You are PhrasePatch, a concise language coach embedded in an AI assistant workflow.
+Target language: ${options.targetLanguage}. Explanation language: ${options.nativeLanguage}.
+
+Analyze the user's prompt:
+- If written in ${options.targetLanguage}: Rate clarity/naturalness (0-10). Show a more idiomatic/natural phrasing. Explain at most ${options.maxTips} improvements in ${options.nativeLanguage}.
+  Format strictly as:
+  > **PhrasePatch (score/10):**
+  > ✨ *More natural:* "<improved version preserving intent>"
+  > 💡 *Dica:* <tips in ${options.nativeLanguage}>
+
+(If the user's ${options.targetLanguage} is already completely natural (10/10), keep it to one short line: > **PhrasePatch (10/10):** Natural and clear ${options.targetLanguage}! 👍)
+
+${nativeHandling}
+
+- If the user prompt contains NO natural language words (e.g. pure code snippet, git diff, URL, shell command like "ls -la" or "git status", or single numbers):
+  Output ONLY: OMIT
+
+CRITICAL: DO NOT answer the user's technical question. DO NOT write code. ONLY output the PhrasePatch markdown blockquote or OMIT.`;
+}
+
 function installOpenCode(repoRoot, options) {
   const opencodeDir = expandHome('~/.config/opencode');
   ensureDir(opencodeDir);
 
-  // 1. Install via AGENTS.md (loaded globally by OpenCode in all sessions)
+  // 1. Ensure AGENTS.md does NOT contain PhrasePatch (out-of-band architecture: zero main prompt injection)
   const agentsMd = path.join(opencodeDir, 'AGENTS.md');
-  const promptBlock = buildPrompt(options);
-  updateMarkdownWithBlock(agentsMd, promptBlock);
+  removeMarkdownBlock(agentsMd);
 
   // 2. Install native plugin into ~/.config/opencode/plugins/phrasepatch/
   const pluginDir = path.join(opencodeDir, 'plugins', 'phrasepatch');
@@ -147,8 +173,8 @@ function installOpenCode(repoRoot, options) {
     JSON.stringify(
       {
         name: 'phrasepatch-opencode-plugin',
-        version: '0.1.0',
-        description: 'PhrasePatch plugin for OpenCode — Language Coach',
+        version: '0.2.0',
+        description: 'PhrasePatch plugin for OpenCode — Out-of-band Language Coach',
         type: 'module',
         main: 'plugin.js',
         private: true,
@@ -159,25 +185,121 @@ function installOpenCode(repoRoot, options) {
     'utf8'
   );
 
-  const instructionText = buildInstructionText(options);
+  const reviewerPrompt = buildReviewerPrompt(options);
   const pluginJs = path.join(pluginDir, 'plugin.js');
   fs.writeFileSync(
     pluginJs,
-    `// PhrasePatch — OpenCode plugin
-// Injects language coaching instructions into OpenCode's system prompt.
+    `// PhrasePatch — OpenCode Plugin (Out-of-band OpenRouter Free Model)
+// Evaluates user prompts using openrouter/free in parallel without injecting anything into the main system prompt.
 
-const COACH_INSTRUCTION = ${JSON.stringify(instructionText)};
+import fs from 'node:fs';
+import path from 'node:path';
+import os from 'node:os';
+
+const REVIEWER_PROMPT = ${JSON.stringify(reviewerPrompt)};
+
+function getOpenRouterKey() {
+  if (process.env.OPENROUTER_API_KEY) return process.env.OPENROUTER_API_KEY;
+  const candidates = [
+    path.join(os.homedir(), '.local/share/opencode/auth.json'),
+    path.join(os.homedir(), '.config/opencode/auth.json'),
+  ];
+  for (const f of candidates) {
+    if (fs.existsSync(f)) {
+      try {
+        const data = JSON.parse(fs.readFileSync(f, 'utf8'));
+        if (data.openrouter?.key) return data.openrouter.key;
+      } catch (_) {}
+    }
+  }
+  return null;
+}
+
+function extractPromptText(parts) {
+  if (!Array.isArray(parts)) return '';
+  return parts
+    .map((p) => {
+      if (typeof p === 'string') return p;
+      if (p?.type === 'text' && typeof p.text === 'string') return p.text;
+      return '';
+    })
+    .filter(Boolean)
+    .join('\\n')
+    .trim();
+}
+
+const pendingReviews = new Map();
+const turnCompleted = new Set();
+
+async function fetchReview(userPrompt) {
+  const key = getOpenRouterKey();
+  if (!key) return null;
+
+  const cleaned = userPrompt.trim();
+  if (cleaned.length < 2) return null;
+
+  try {
+    const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': \`Bearer \${key}\`,
+        'Content-Type': 'application/json',
+        'HTTP-Referer': 'https://phrasepatch.dev',
+        'X-Title': 'PhrasePatch',
+      },
+      body: JSON.stringify({
+        model: 'openrouter/free',
+        messages: [
+          { role: 'system', content: REVIEWER_PROMPT },
+          { role: 'user', content: cleaned },
+        ],
+        temperature: 0.2,
+      }),
+      signal: AbortSignal.timeout(6000),
+    });
+
+    if (!res.ok) return null;
+    const json = await res.json();
+    const content = json.choices?.[0]?.message?.content?.trim();
+    if (!content || content.startsWith('OMIT')) return null;
+    return content;
+  } catch (_) {
+    return null;
+  }
+}
 
 export const PhrasePatchPlugin = async (_ctx) => {
   return {
-    'experimental.chat.system.transform': async (_input, output) => {
-      if (!output || !Array.isArray(output.system)) return;
-      for (let i = output.system.length - 1; i >= 0; i--) {
-        if (typeof output.system[i] === 'string' && output.system[i].includes('PhrasePatch — Language Coach')) {
-          output.system.splice(i, 1);
+    'chat.message': async (input, output) => {
+      const sessionID = input?.sessionID;
+      if (!sessionID) return;
+
+      const userText = extractPromptText(output?.parts);
+      if (!userText) return;
+
+      turnCompleted.delete(sessionID);
+      const reviewPromise = fetchReview(userText);
+      pendingReviews.set(sessionID, reviewPromise);
+    },
+
+    'experimental.text.complete': async (input, output) => {
+      const sessionID = input?.sessionID;
+      if (!sessionID) return;
+
+      if (turnCompleted.has(sessionID)) return;
+
+      const pending = pendingReviews.get(sessionID);
+      if (!pending) return;
+
+      try {
+        const review = await pending;
+        pendingReviews.delete(sessionID);
+
+        if (review && typeof output.text === 'string') {
+          turnCompleted.add(sessionID);
+          output.text = review + '\\n\\n' + output.text;
         }
-      }
-      output.system.push(COACH_INSTRUCTION);
+      } catch (_) {}
     },
   };
 };

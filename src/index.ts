@@ -1,5 +1,5 @@
 import { Plugin } from "@opencode/plugin";
-import { buildCoachInstruction } from "./instructions";
+import { buildCoachInstruction, buildReviewerSystemPrompt } from "./instructions";
 import { resolveOptions } from "./options";
 
 export default Plugin.define({
@@ -19,5 +19,5 @@ export default Plugin.define({
   },
 });
 
-export { buildCoachInstruction, resolveOptions };
+export { buildCoachInstruction, buildReviewerSystemPrompt, resolveOptions };
 export type { PhrasePatchMode, PhrasePatchOptions } from "./options";
