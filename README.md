@@ -61,6 +61,7 @@ Current scope:
 - configurable explanation/native language
 - light, normal, and study modes
 - target language suggestions from native prompts (`suggestFromNative`)
+- multi-agent installer for OpenCode, Codex, and AGY
 - no second LLM call
 - no prompt rewriting
 
@@ -73,14 +74,35 @@ Planned:
 - spaced repetition
 - CLI
 - MCP server
-- Codex and Claude Code integrations
+- Claude Code and Cursor dedicated hooks
 
-## Requirements
+## Quick Install
 
-- OpenCode V2
-- Node.js 20+ (Node.js 22 recommended for development)
+Install PhrasePatch automatically into your local coding agents (**OpenCode**, **Codex**, and **AGY / Antigravity**):
 
-PhrasePatch uses the current OpenCode V2 plugin API through `@opencode/plugin`.
+```bash
+./install.sh
+```
+
+Or target specific agents:
+
+```bash
+./install.sh --opencode   # Configure OpenCode (~/.config/opencode)
+./install.sh --codex      # Configure Codex (~/.codex/instructions.md)
+./install.sh --agy        # Configure AGY (~/.gemini/config/GEMINI.md)
+```
+
+Customize languages and coaching mode during install:
+
+```bash
+./install.sh --target English --native Portuguese --mode light
+```
+
+To remove PhrasePatch at any time:
+
+```bash
+./install.sh --uninstall
+```
 
 ## Local development
 
