@@ -6,6 +6,7 @@ export interface PhrasePatchOptions {
   nativeLanguage: string;
   mode: PhrasePatchMode;
   maxTips: number;
+  suggestFromNative: boolean;
 }
 
 const DEFAULTS: PhrasePatchOptions = {
@@ -14,6 +15,7 @@ const DEFAULTS: PhrasePatchOptions = {
   nativeLanguage: "Portuguese",
   mode: "light",
   maxTips: 2,
+  suggestFromNative: true,
 };
 
 export function resolveOptions(input: Record<string, unknown>): PhrasePatchOptions {
@@ -35,5 +37,9 @@ export function resolveOptions(input: Record<string, unknown>): PhrasePatchOptio
       typeof maxTips === "number" && Number.isInteger(maxTips) && maxTips >= 1 && maxTips <= 5
         ? maxTips
         : DEFAULTS.maxTips,
+    suggestFromNative:
+      typeof input.suggestFromNative === "boolean"
+        ? input.suggestFromNative
+        : DEFAULTS.suggestFromNative,
   };
 }

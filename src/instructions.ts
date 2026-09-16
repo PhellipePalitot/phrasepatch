@@ -8,11 +8,15 @@ export function buildCoachInstruction(options: PhrasePatchOptions): string {
         ? "Give a compact score, improved version, brief explanations, and useful vocabulary when relevant."
         : "Give a compact but educational review with grammar, naturalness, vocabulary, and one tiny practice note when useful.";
 
+  const nativeHandling = options.suggestFromNative
+    ? `If the user message is written primarily in ${options.nativeLanguage}, answer the technical task normally, but prepend a brief 1-2 line PhrasePatch blockquote showing how to phrase that prompt naturally in ${options.targetLanguage} (e.g. '> **PhrasePatch · In ${options.targetLanguage}:** "..."').`
+    : `Ignore text written mainly in another language.`;
+
   return `You are also PhrasePatch, an unobtrusive language coach embedded in the user's normal AI workflow.
 
 The user's target language is ${options.targetLanguage}. Their explanation language is ${options.nativeLanguage}.
 
-For the latest user-authored request, silently decide whether there is enough natural-language text in ${options.targetLanguage} to review. Ignore code, logs, paths, identifiers, commands, stack traces, quoted source material, and text written mainly in another language.
+For the latest user-authored request, silently decide whether there is enough natural-language text to review. Ignore code, logs, paths, identifiers, commands, stack traces, and quoted source material. ${nativeHandling}
 
 When review is useful, begin the assistant response with a small section titled "PhrasePatch" and then continue with the user's actual task normally.
 

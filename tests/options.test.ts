@@ -9,6 +9,7 @@ describe("resolveOptions", () => {
       nativeLanguage: "Portuguese",
       mode: "light",
       maxTips: 2,
+      suggestFromNative: true,
     });
   });
 
@@ -19,12 +20,14 @@ describe("resolveOptions", () => {
         nativeLanguage: "English",
         mode: "study",
         maxTips: 4,
+        suggestFromNative: false,
       }),
     ).toMatchObject({
       targetLanguage: "Spanish",
       nativeLanguage: "English",
       mode: "study",
       maxTips: 4,
+      suggestFromNative: false,
     });
   });
 
