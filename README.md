@@ -4,7 +4,7 @@
 
 PhrasePatch is an unobtrusive language coach for AI-assisted workflows. Instead of asking you to stop working and open a language course, it turns the prompts you already write into small, contextual learning moments.
 
-The first integration targets **OpenCode V2**.
+It works with **OpenCode**, **Codex**, and **AGY (Antigravity)**.
 
 ## The idea
 
@@ -14,17 +14,12 @@ You write your normal prompt:
 create a endpoint for get all users with pagination
 ```
 
-PhrasePatch asks the same model to begin with a tiny language review:
+PhrasePatch provides a tiny language review at the top of the response:
 
-```text
-> PhrasePatch · 7/10
-> 
-> More natural:
-> Create an endpoint to retrieve all users with pagination.
-> 
-> Learn:
-> - Use "an endpoint", not "a endpoint".
-> - "to retrieve" is more natural than "for get".
+```markdown
+> **PhrasePatch (7/10):**
+> ✨ *More natural:* "Create an endpoint to retrieve all users with pagination."
+> 💡 *Dica:* Use "an endpoint", not "a endpoint"; "to retrieve" is more natural than "for get".
 
 [normal agent response continues here...]
 ```
@@ -35,14 +30,13 @@ Or when prompting in your native language:
 crie um endpoint para listar todos os usuários com paginação
 ```
 
-```text
-> PhrasePatch · In English:
-> "Create an endpoint to retrieve all users with pagination."
+```markdown
+> **PhrasePatch · In English:** "Create an endpoint to retrieve all users with pagination."
 
 [normal agent response continues here...]
 ```
 
-PhrasePatch never replaces the user's prompt. It adds temporary coaching instructions to the outgoing model context, leaving the persisted user request intact.
+PhrasePatch never alters your prompt's intent. In OpenCode, it evaluates prompts out-of-band using OpenRouter's free router (`openrouter/free`), keeping the main session prompt 100% clean and free of token pollution.
 
 ## Why PhrasePatch?
 
@@ -52,29 +46,26 @@ The target language is configurable. English is only the default.
 
 ## Status
 
-`v0.1.0` — early prototype.
+`v0.2.0` — stable multi-agent coach.
 
-Current scope:
+Current features:
 
-- OpenCode V2 plugin
-- configurable target language
-- configurable explanation/native language
-- light, normal, and study modes
-- target language suggestions from native prompts (`suggestFromNative`)
-- multi-agent installer for OpenCode, Codex, and AGY
-- no second LLM call
-- no prompt rewriting
+- **OpenCode plugin**: Out-of-band parallel review via OpenRouter's free tier (`openrouter/free`) — zero system prompt pollution, zero extra token cost, fully compatible with terse/caveman modes.
+- **Codex & AGY integrations**: Clean prompt rules injected directly into instruction files (`instructions.md` / `rules`).
+- **Configurable target language**: Default is English.
+- **Configurable explanation language**: Default is Portuguese.
+- **Modes**: `light`, `normal`, and `study`.
+- **Native prompt translations**: (`suggestFromNative`) converts Portuguese prompts into natural English equivalents.
+- **Smart omission**: Pure code snippets, raw URLs, and terminal commands (e.g. `git status`, `ls`) are automatically omitted.
+- **Unified installer**: One command to install or uninstall across OpenCode, Codex, and AGY.
 
 Planned:
 
-- language detection
-- local model / Ollama reviewer
-- persistent learning history
-- recurring mistake detection
-- spaced repetition
-- CLI
-- MCP server
-- Claude Code and Cursor dedicated hooks
+- language auto-detection
+- local model / Ollama reviewer backend
+- persistent learning history & recurring mistake tracker
+- spaced repetition review mode
+- dedicated Claude Code and Cursor hooks
 
 ## Quick Install
 
@@ -111,7 +102,7 @@ npx phrasepatch --uninstall
 ## Local development
 
 ```bash
-git clone https://github.com/YOUR_USER/phrasepatch.git
+git clone https://github.com/PhellipePalitot/phrasepatch.git
 cd phrasepatch
 npm install
 npm run check
@@ -182,23 +173,28 @@ OpenCode V2 supports local paths, Git repositories, and npm packages as plugin s
 
 ## Architecture
 
+### 1. OpenCode (Out-of-band Parallel Review)
+
+In OpenCode, PhrasePatch runs as a native plugin that evaluates prompts asynchronously in parallel via OpenRouter's free router (`openrouter/free`):
+
 ```text
 User prompt
     │
-    ▼
-OpenCode
-    │
-    ├── PhrasePatch context hook
-    │       └── temporary coaching instruction
-    │
-    ▼
-Selected model
-    │
-    ├── tiny PhrasePatch review
-    └── normal task response
+    ├──► OpenCode Main Agent ────► Code Generation / Tools (clean context, zero prompt pollution)
+    │                                    │
+    └──► OpenRouter (openrouter/free)    │
+             │                           │
+             ▼                           ▼
+       Language review ─────────► Prepend to final output
 ```
 
-The first release intentionally reuses the selected model. A dedicated reviewer backend (including Ollama) can be introduced later without changing the product UX.
+- **Zero prompt pollution:** The main coding model's system prompt is untouched.
+- **Full compatibility:** Works seamlessly alongside brevity plugins (like Caveman mode) and multi-step tool loops.
+- **Zero additional cost:** Uses the `openrouter/free` router endpoint with your existing OpenRouter key.
+
+### 2. Codex & AGY (Antigravity)
+
+In Codex and AGY, PhrasePatch installs concise, unobtrusive coaching instructions directly into the agent's system rule files (`~/.codex/instructions.md` and `~/.gemini/config/rules/phrasepatch.md`).
 
 ## Contributing
 
