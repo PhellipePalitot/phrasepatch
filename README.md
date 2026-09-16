@@ -81,27 +81,31 @@ Planned:
 Install PhrasePatch automatically into your local coding agents (**OpenCode**, **Codex**, and **AGY / Antigravity**):
 
 ```bash
+# Using npx (zero setup):
+npx phrasepatch
+
+# Or from local clone:
 ./install.sh
 ```
 
-Or target specific agents:
+Target specific agents:
 
 ```bash
-./install.sh --opencode   # Configure OpenCode (~/.config/opencode)
-./install.sh --codex      # Configure Codex (~/.codex/instructions.md)
-./install.sh --agy        # Configure AGY (~/.gemini/config/GEMINI.md)
+npx phrasepatch --opencode   # Configure OpenCode (~/.config/opencode)
+npx phrasepatch --codex      # Configure Codex (~/.codex/instructions.md)
+npx phrasepatch --agy        # Configure AGY (~/.gemini/config/GEMINI.md)
 ```
 
-Customize languages and coaching mode during install:
+Customize languages and coaching mode:
 
 ```bash
-./install.sh --target English --native Portuguese --mode light
+npx phrasepatch --target English --native Portuguese --mode light
 ```
 
 To remove PhrasePatch at any time:
 
 ```bash
-./install.sh --uninstall
+npx phrasepatch --uninstall
 ```
 
 ## Local development

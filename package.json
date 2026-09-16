@@ -3,21 +3,41 @@
   "version": "0.1.0",
   "description": "Learn any language organically while prompting AI coding agents.",
   "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
-    ".": "./src/index.ts"
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "bin": {
+    "phrasepatch": "./scripts/install.js"
   },
   "files": [
-    "src",
+    "dist",
+    "scripts",
+    "install.sh",
     "README.md",
     "LICENSE"
   ],
   "scripts": {
+    "build": "tsc -p tsconfig.build.json",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "check": "npm run typecheck && npm test",
+    "prepublishOnly": "npm run check && npm run build",
     "install:agents": "node scripts/install.js",
     "uninstall:agents": "node scripts/install.js --uninstall"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/PhellipePalitot/phrasepatch.git"
+  },
+  "bugs": {
+    "url": "https://github.com/PhellipePalitot/phrasepatch/issues"
+  },
+  "homepage": "https://github.com/PhellipePalitot/phrasepatch#readme",
   "keywords": [
     "opencode",
     "language-learning",
