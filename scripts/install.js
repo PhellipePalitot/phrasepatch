@@ -38,7 +38,7 @@ function ensureDir(dirPath) {
   }
 }
 
-function buildPrompt(options) {
+function buildInstructionText(options) {
   const detail =
     options.mode === 'light'
       ? 'Keep the coaching extremely short: score, one improved version, and at most the configured number of tips.'
@@ -50,8 +50,7 @@ function buildPrompt(options) {
     ? `If the user message is written primarily in ${options.nativeLanguage}, answer the technical task normally, but prepend a brief 1-2 line PhrasePatch blockquote showing how to phrase that prompt naturally in ${options.targetLanguage} (e.g. '> **PhrasePatch · In ${options.targetLanguage}:** "..."').`
     : 'Ignore text written mainly in another language.';
 
-  return `${START_MARKER}
-# PhrasePatch — Language Coach
+  return `# PhrasePatch — Language Coach
 
 You are also PhrasePatch, an unobtrusive language coach embedded in the user's normal AI workflow.
 
@@ -73,7 +72,12 @@ The PhrasePatch section should:
 
 Do not repeat PhrasePatch feedback during tool-driven continuations for the same user request. If the visible conversation already contains a PhrasePatch section for the latest user message, omit it.
 
-Mode: ${options.mode}. ${detail}
+Mode: ${options.mode}. ${detail}`;
+}
+
+function buildPrompt(options) {
+  return `${START_MARKER}
+${buildInstructionText(options)}
 ${END_MARKER}`;
 }
 
@@ -117,44 +121,96 @@ function installOpenCode(repoRoot, options) {
   const opencodeDir = expandHome('~/.config/opencode');
   ensureDir(opencodeDir);
 
-  // 1. Install via AGENTS.md (loaded globally by OpenCode)
+  // 1. Install via AGENTS.md (loaded globally by OpenCode in all sessions)
   const agentsMd = path.join(opencodeDir, 'AGENTS.md');
   const promptBlock = buildPrompt(options);
   updateMarkdownWithBlock(agentsMd, promptBlock);
 
-  // 2. Register plugin in opencode.jsonc / opencode.json if present
+  // 2. Install native plugin into ~/.config/opencode/plugins/phrasepatch/
+  const pluginDir = path.join(opencodeDir, 'plugins', 'phrasepatch');
+  ensureDir(pluginDir);
+
+  const pluginPackageJson = path.join(pluginDir, 'package.json');
+  fs.writeFileSync(
+    pluginPackageJson,
+    JSON.stringify(
+      {
+        name: 'phrasepatch-opencode-plugin',
+        version: '0.1.0',
+        description: 'PhrasePatch plugin for OpenCode — Language Coach',
+        type: 'module',
+        main: 'plugin.js',
+        private: true,
+      },
+      null,
+      2
+    ) + '\n',
+    'utf8'
+  );
+
+  const instructionText = buildInstructionText(options);
+  const pluginJs = path.join(pluginDir, 'plugin.js');
+  fs.writeFileSync(
+    pluginJs,
+    `// PhrasePatch — OpenCode plugin
+// Injects language coaching instructions into OpenCode's system prompt.
+
+const COACH_INSTRUCTION = ${JSON.stringify(instructionText)};
+
+export const PhrasePatchPlugin = async (_ctx) => {
+  return {
+    'experimental.chat.system.transform': async (_input, output) => {
+      if (!output || !Array.isArray(output.system)) return;
+      const alreadyInjected = output.system.some(
+        (s) => typeof s === 'string' && s.includes('PhrasePatch')
+      );
+      if (alreadyInjected) return;
+      output.system.push(COACH_INSTRUCTION);
+    },
+  };
+};
+
+export default PhrasePatchPlugin;
+`,
+    'utf8'
+  );
+
+  // 3. Register in opencode.jsonc / opencode.json
   const configFiles = [
     path.join(opencodeDir, 'opencode.jsonc'),
     path.join(opencodeDir, 'opencode.json'),
     path.join(opencodeDir, 'config.json'),
   ];
 
-  let configFile = configFiles.find(f => fs.existsSync(f));
+  let configFile = configFiles.find((f) => fs.existsSync(f));
   if (!configFile) {
     configFile = path.join(opencodeDir, 'opencode.jsonc');
-    fs.writeFileSync(configFile, '{\n  "$schema": "https://opencode.ai/config.json"\n}\n', 'utf8');
+    fs.writeFileSync(configFile, '{\n  "$schema": "https://opencode.ai/config.json",\n  "plugin": []\n}\n', 'utf8');
   }
 
   try {
     const raw = fs.readFileSync(configFile, 'utf8');
-    if (!raw.includes('phrasepatch')) {
-      try {
-        const json = JSON.parse(raw);
-        if (!json.plugins) json.plugins = [];
-        json.plugins.push({
-          package: repoRoot,
-          options: {
-            enabled: true,
-            targetLanguage: options.targetLanguage,
-            nativeLanguage: options.nativeLanguage,
-            mode: options.mode,
-            maxTips: options.maxTips,
-            suggestFromNative: options.suggestFromNative,
-          },
-        });
-        fs.writeFileSync(configFile, JSON.stringify(json, null, 2) + '\n', 'utf8');
-      } catch (_) {
-        // Comments or non-strict JSON in opencode.jsonc
+    const pluginEntry = './plugins/phrasepatch/plugin.js';
+    let json = null;
+    try {
+      json = JSON.parse(raw);
+    } catch (_) {}
+
+    if (json) {
+      if (!Array.isArray(json.plugin)) {
+        json.plugin = [];
+      }
+      if (!json.plugin.includes(pluginEntry)) {
+        json.plugin.push(pluginEntry);
+      }
+      if (Array.isArray(json.plugins)) {
+        delete json.plugins;
+      }
+      fs.writeFileSync(configFile, JSON.stringify(json, null, 2) + '\n', 'utf8');
+    } else if (!raw.includes(pluginEntry)) {
+      if (raw.includes('"plugin"')) {
+        const updated = raw.replace(/"plugin"\s*:\s*\[/, `"plugin": [\n    "${pluginEntry}",`);
+        fs.writeFileSync(configFile, updated, 'utf8');
       }
     }
   } catch (_) {}
@@ -167,6 +223,13 @@ function uninstallOpenCode(repoRoot) {
   const agentsMd = path.join(opencodeDir, 'AGENTS.md');
   removeMarkdownBlock(agentsMd);
 
+  const pluginDir = path.join(opencodeDir, 'plugins', 'phrasepatch');
+  if (fs.existsSync(pluginDir)) {
+    try {
+      fs.rmSync(pluginDir, { recursive: true, force: true });
+    } catch (_) {}
+  }
+
   const configFiles = [
     path.join(opencodeDir, 'opencode.jsonc'),
     path.join(opencodeDir, 'opencode.json'),
@@ -178,12 +241,8 @@ function uninstallOpenCode(repoRoot) {
       try {
         const raw = fs.readFileSync(configFile, 'utf8');
         const json = JSON.parse(raw);
-        if (Array.isArray(json.plugins)) {
-          json.plugins = json.plugins.filter(p => {
-            if (typeof p === 'string') return !p.includes('phrasepatch');
-            if (p && typeof p === 'object' && p.package) return !p.package.includes('phrasepatch');
-            return true;
-          });
+        if (Array.isArray(json.plugin)) {
+          json.plugin = json.plugin.filter((p) => !p.includes('phrasepatch'));
           fs.writeFileSync(configFile, JSON.stringify(json, null, 2) + '\n', 'utf8');
         }
       } catch (_) {}
