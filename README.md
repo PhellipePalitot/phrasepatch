@@ -46,7 +46,7 @@ The target language is configurable. English is only the default.
 
 ## Status
 
-`v0.2.0` — stable multi-agent coach.
+`v0.2.1` — stable multi-agent coach.
 
 Current features:
 

@@ -173,7 +173,7 @@ function installOpenCode(repoRoot, options) {
     JSON.stringify(
       {
         name: 'phrasepatch-opencode-plugin',
-        version: '0.2.0',
+        version: '0.2.1',
         description: 'PhrasePatch plugin for OpenCode — Out-of-band Language Coach',
         type: 'module',
         main: 'plugin.js',
