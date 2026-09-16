@@ -240,10 +240,12 @@ function uninstallAgy() {
 
 function printHelp() {
   console.log(`
-PhrasePatch Installer
+PhrasePatch — Multi-Agent Language Coach Installer
+
 Usage:
+  npx phrasepatch [options]
+  phrasepatch [options]
   ./install.sh [options]
-  node scripts/install.js [options]
 
 Options:
   --all                 Install for all supported agents (OpenCode, Codex, AGY)
@@ -255,6 +257,12 @@ Options:
   --native <lang>       Explanation/native language (default: Portuguese)
   --mode <mode>         Coaching depth: light | normal | study (default: light)
   --help, -h            Show this help message
+
+Examples:
+  npx phrasepatch
+  npx phrasepatch --opencode
+  npx phrasepatch --target Spanish --native English
+  npx phrasepatch --uninstall
 `);
 }
 
