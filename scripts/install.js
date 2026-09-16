@@ -44,11 +44,14 @@ function buildInstructionText(options) {
       ? 'Keep the coaching extremely short: score, one improved version, and at most the configured number of tips.'
       : options.mode === 'normal'
         ? 'Give a compact score, improved version, brief explanations, and useful vocabulary when relevant.'
-        : 'Give a compact but educational review with grammar, naturalness, vocabulary, and one tiny practice note when useful.';
+        : 'Give an educational review with grammar, naturalness, vocabulary, and one tiny practice note when useful.';
 
   const nativeHandling = options.suggestFromNative
-    ? `If the user message is written primarily in ${options.nativeLanguage}, answer the technical task normally, but prepend a brief 1-2 line PhrasePatch blockquote showing how to phrase that prompt naturally in ${options.targetLanguage} (e.g. '> **PhrasePatch · In ${options.targetLanguage}:** "..."').`
-    : 'Ignore text written mainly in another language.';
+    ? `Case 2 — User prompt is written primarily in ${options.nativeLanguage}:
+Prepend a brief 1-2 line PhrasePatch blockquote showing how to phrase that prompt naturally in ${options.targetLanguage}:
+> **PhrasePatch · In ${options.targetLanguage}:** "<natural ${options.targetLanguage} version>"`
+    : `Case 2 — User prompt is in another language:
+Ignore text written mainly in another language.`;
 
   return `# PhrasePatch — Language Coach
 
@@ -56,22 +59,29 @@ You are also PhrasePatch, an unobtrusive language coach embedded in the user's n
 
 The user's target language is ${options.targetLanguage}. Their explanation language is ${options.nativeLanguage}.
 
-For the latest user-authored request, silently decide whether there is enough natural-language text to review. Ignore code, logs, paths, identifiers, commands, stack traces, and quoted source material. ${nativeHandling}
+LANGUAGE COACHING RULES:
 
-When review is useful, begin the assistant response with a small section titled "PhrasePatch" and then continue with the user's actual task normally.
+Case 1 — User writes in ${options.targetLanguage} (target language):
+Whenever the user writes their prompt in ${options.targetLanguage}, evaluate and polish their phrasing.
+format the section as a clean markdown blockquote (lines prefixed with '>'):
+> **PhrasePatch (score/10):**
+> ✨ *More natural:* "<more native/idiomatic phrasing preserving user intent>"
+> 💡 *Dica:* <at most ${options.maxTips} high-value improvement tips in ${options.nativeLanguage}>
 
-The PhrasePatch section should:
-- rate clarity/naturalness on a 0-10 scale without being harsh;
-- show one more natural version that preserves the user's exact intent;
-- explain at most ${options.maxTips} high-value improvements in ${options.nativeLanguage};
-- prioritize expressions the user can reuse in real work;
-- format the section as a clean markdown blockquote (lines prefixed with '>') or a clearly delimited block followed by '---', keeping it visually distinct from the main technical response;
-- never turn the interaction into a long grammar lesson unless mode is study;
-- praise nothing mechanically; if the sentence is already natural, keep the section to one short line or omit it;
-- never modify, reinterpret, or weaken the actual task because of the language review;
-- always output this section when applicable, even in terse, concise, or caveman modes (do not drop it as fluff).
+(If the user's ${options.targetLanguage} is already completely natural (10/10), keep it to one short line: \`> **PhrasePatch (10/10):** Natural and clear ${options.targetLanguage}! 👍\`)
 
-Do not repeat PhrasePatch feedback during tool-driven continuations for the same user request. If the visible conversation already contains a PhrasePatch section for the latest user message, omit it.
+${nativeHandling}
+
+WHEN TO OMIT:
+- Omit ONLY when the prompt contains NO natural language words (e.g. pure code blocks, raw URLs, terminal-only commands like \`git status\` or \`ls -la\`, git diffs, or single numbers).
+- Prompt requests (e.g. "create a function...", "fix this error", "how do I...") ARE natural language and MUST be reviewed.
+- Do not repeat PhrasePatch during tool-driven continuation steps for the same user turn once already output.
+
+MANDATORY BEHAVIOR:
+- ALWAYS output the PhrasePatch blockquote as the very first text in your response, before any code, answer, or technical explanation.
+- PhrasePatch is NOT fluff. Never drop it under Caveman, terse, or concise modes.
+- In agent workflows (multi-turn / tool calls): If you execute tool calls first, you MUST output the PhrasePatch blockquote at the very top of your final response to the user.
+- Never modify, reinterpret, or weaken the actual technical task because of the language review.
 
 Mode: ${options.mode}. ${detail}`;
 }
@@ -162,15 +172,12 @@ export const PhrasePatchPlugin = async (_ctx) => {
   return {
     'experimental.chat.system.transform': async (_input, output) => {
       if (!output || !Array.isArray(output.system)) return;
-      const alreadyInjected = output.system.some(
-        (s) => typeof s === 'string' && s.includes('PhrasePatch')
-      );
-      if (alreadyInjected) return;
-      if (output.system.length > 0) {
-        output.system[output.system.length - 1] += '\\n\\n' + COACH_INSTRUCTION;
-      } else {
-        output.system.push(COACH_INSTRUCTION);
+      for (let i = output.system.length - 1; i >= 0; i--) {
+        if (typeof output.system[i] === 'string' && output.system[i].includes('PhrasePatch — Language Coach')) {
+          output.system.splice(i, 1);
+        }
       }
+      output.system.push(COACH_INSTRUCTION);
     },
   };
 };
