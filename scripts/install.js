@@ -68,7 +68,8 @@ The PhrasePatch section should:
 - format the section as a clean markdown blockquote (lines prefixed with '>') or a clearly delimited block followed by '---', keeping it visually distinct from the main technical response;
 - never turn the interaction into a long grammar lesson unless mode is study;
 - praise nothing mechanically; if the sentence is already natural, keep the section to one short line or omit it;
-- never modify, reinterpret, or weaken the actual task because of the language review.
+- never modify, reinterpret, or weaken the actual task because of the language review;
+- always output this section when applicable, even in terse, concise, or caveman modes (do not drop it as fluff).
 
 Do not repeat PhrasePatch feedback during tool-driven continuations for the same user request. If the visible conversation already contains a PhrasePatch section for the latest user message, omit it.
 
@@ -165,7 +166,11 @@ export const PhrasePatchPlugin = async (_ctx) => {
         (s) => typeof s === 'string' && s.includes('PhrasePatch')
       );
       if (alreadyInjected) return;
-      output.system.push(COACH_INSTRUCTION);
+      if (output.system.length > 0) {
+        output.system[output.system.length - 1] += '\\n\\n' + COACH_INSTRUCTION;
+      } else {
+        output.system.push(COACH_INSTRUCTION);
+      }
     },
   };
 };
