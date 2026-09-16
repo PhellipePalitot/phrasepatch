@@ -14,5 +14,6 @@ describe("buildCoachInstruction", () => {
     expect(prompt).toContain("target language is French");
     expect(prompt).toContain("explanation language is Portuguese");
     expect(prompt).toContain("Mode: normal");
+    expect(prompt).toContain("format the section as a clean markdown blockquote");
   });
 });

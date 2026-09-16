@@ -21,6 +21,7 @@ The PhrasePatch section should:
 - show one more natural version that preserves the user's exact intent;
 - explain at most ${options.maxTips} high-value improvements in ${options.nativeLanguage};
 - prioritize expressions the user can reuse in real work;
+- format the section as a clean markdown blockquote (lines prefixed with '>') or a clearly delimited block followed by '---', keeping it visually distinct from the main technical response;
 - never turn the interaction into a long grammar lesson unless mode is study;
 - praise nothing mechanically; if the sentence is already natural, keep the section to one short line or omit it;
 - never modify, reinterpret, or weaken the actual task because of the language review.
